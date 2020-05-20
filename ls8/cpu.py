@@ -2,6 +2,11 @@
 
 import sys
 
+LDI = 0b10000010
+PRN = 0b01000111
+HLT = 0b00000001
+MUL = 0b10100010
+
 
 class CPU:
     """Main CPU class."""
@@ -11,6 +16,27 @@ class CPU:
         self.pc = 0
         self.ram = [0] * 255
         self.reg = [0] * 8
+        self.branchtable = {}
+        self.branchtable[LDI] = self.handle_ldi
+        self.branchtable[PRN] = self.handle_prn
+        self.branchtable[MUL] = self.handle_mul
+
+    def handle_ldi(self):
+        reg_index = self.ram[self.pc + 1]
+        num = self.ram[self.pc + 2]
+        self.reg[reg_index] = num
+        self.pc += 3
+
+    def handle_prn(self):
+        reg_index = self.ram[self.pc + 1]
+        print(self.reg[reg_index])
+        self.pc += 2
+
+    def handle_mul(self):
+        reg_index1 = self.ram[self.pc + 1]
+        reg_index2 = self.ram[self.pc + 2]
+        self.alu("MULTIPLY", reg_index1, reg_index2)
+        self.pc += 3
 
     def load(self, file_load):
         """Load a program into memory."""
@@ -22,7 +48,8 @@ class CPU:
         try:
             with open(f"examples/{file_load}") as f:
                 for line in f:
-                    num = line.split("#" or "\n")[0].replace('\n', '')
+                    num = line.split("#")[0].replace('\n', '')
+                    # print(f"run -> {int(num,2):08b}")
                     self.ram[address] = int(num, 2)
                     address += 1
         except FileNotFoundError:
@@ -82,33 +109,33 @@ class CPU:
     def run(self):
         """Run the CPU."""
 
-        LDI = 0b10000010
-        PRN = 0b01000111
-        HLT = 0b00000001
-        MUL = 0b10100010
-
         run = True
         command = self.ram[self.pc]
         while run:
-            if command == LDI:
-                # load value into register
-                reg_index = self.ram[self.pc + 1]
-                num = self.ram[self.pc + 2]
-                self.reg[reg_index] = num
-                self.pc += 3
-            elif command == MUL:
-                reg_index1 = self.ram[self.pc + 1]
-                reg_index2 = self.ram[self.pc + 2]
-                self.alu("MULTIPLY", reg_index1, reg_index2)
-                self.pc += 3
-            elif command == PRN:
-                reg_index = self.ram[self.pc + 1]
-                print(self.reg[reg_index])
-                self.pc += 2
-            elif command == HLT:
+            if command == HLT:
                 run = False
+            elif command in self.branchtable:
+                self.branchtable[command]()
             else:
                 print(f"invalid instruction [{self.ram[self.pc]}]")
                 run = False
                 self.pc += 1
             command = self.ram[self.pc]
+
+ # if command == LDI:
+            #     # load value into register
+            #     reg_index = self.ram[self.pc + 1]
+            #     num = self.ram[self.pc + 2]
+            #     self.reg[reg_index] = num
+            #     self.pc += 3
+            # elif command == MUL:
+            #     reg_index1 = self.ram[self.pc + 1]
+            #     reg_index2 = self.ram[self.pc + 2]
+            #     self.alu("MULTIPLY", reg_index1, reg_index2)
+            #     self.pc += 3
+            # elif command == PRN:
+            #     reg_index = self.ram[self.pc + 1]
+            #     print(self.reg[reg_index])
+            #     self.pc += 2
+            # elif command == HLT:
+            #     run = False
