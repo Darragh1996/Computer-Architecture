@@ -5,9 +5,12 @@ import sys
 LDI = 0b10000010
 PRN = 0b01000111
 HLT = 0b00000001
+ADD = 0b10100000
 MUL = 0b10100010
 PUSH = 0b01000101
 POP = 0b01000110
+CALL = 0b01010000
+RET = 0b00010001
 
 
 class CPU:
@@ -26,6 +29,9 @@ class CPU:
         self.branchtable[MUL] = self.handle_mul
         self.branchtable[PUSH] = self.handle_push
         self.branchtable[POP] = self.handle_pop
+        self.branchtable[CALL] = self.handle_call
+        self.branchtable[RET] = self.handle_return
+        self.branchtable[ADD] = self.handle_add
 
     def handle_ldi(self):
         reg_index = self.ram[self.pc + 1]
@@ -44,13 +50,24 @@ class CPU:
         self.alu("MULTIPLY", reg_index1, reg_index2)
         self.pc += 3
 
+    def handle_add(self):
+        reg_index1 = self.ram[self.pc + 1]
+        reg_index2 = self.ram[self.pc + 2]
+        self.alu("ADD", reg_index1, reg_index2)
+        self.pc += 3
+
     def handle_push(self):
         reg = self.ram[self.pc + 1]
         val = self.reg[reg]
 
         self.reg[self.sp] -= 1
+        # print(self.ram[self.reg[self.sp]], self.reg[self.sp])
+        # if self.ram[self.reg[self.sp]] == 0:
         self.ram[self.reg[self.sp]] = val
         self.pc += 2
+        # else:
+        #     self.reg[self.sp] += 1
+        #     raise OverflowError("Stack Overflow")
 
     def handle_pop(self):
         reg = self.ram[self.pc + 1]
@@ -59,6 +76,17 @@ class CPU:
         self.reg[reg] = val
         self.reg[self.sp] += 1
         self.pc += 2
+
+    def handle_call(self):
+        self.reg[self.sp] -= 1
+        self.ram[self.reg[self.sp]] = self.pc + 2
+
+        reg = self.ram[self.pc + 1]
+        self.pc = self.reg[reg]
+
+    def handle_return(self):
+        self.pc = self.ram[self.reg[self.sp]]
+        self.reg[self.sp] += 1
 
     def load(self, file_load):
         """Load a program into memory."""
@@ -139,7 +167,7 @@ class CPU:
             elif command in self.branchtable:
                 self.branchtable[command]()
             else:
-                print(f"invalid instruction [{self.ram[self.pc]}]")
+                print(f"invalid instruction [{self.ram[self.pc]:08b}]")
                 run = False
                 self.pc += 1
             command = self.ram[self.pc]
