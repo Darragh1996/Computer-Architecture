@@ -6,6 +6,8 @@ LDI = 0b10000010
 PRN = 0b01000111
 HLT = 0b00000001
 MUL = 0b10100010
+PUSH = 0b01000101
+POP = 0b01000110
 
 
 class CPU:
@@ -16,10 +18,14 @@ class CPU:
         self.pc = 0
         self.ram = [0] * 255
         self.reg = [0] * 8
+        self.sp = 7
+        self.reg[self.sp] = 0xf4
         self.branchtable = {}
         self.branchtable[LDI] = self.handle_ldi
         self.branchtable[PRN] = self.handle_prn
         self.branchtable[MUL] = self.handle_mul
+        self.branchtable[PUSH] = self.handle_push
+        self.branchtable[POP] = self.handle_pop
 
     def handle_ldi(self):
         reg_index = self.ram[self.pc + 1]
@@ -37,6 +43,22 @@ class CPU:
         reg_index2 = self.ram[self.pc + 2]
         self.alu("MULTIPLY", reg_index1, reg_index2)
         self.pc += 3
+
+    def handle_push(self):
+        reg = self.ram[self.pc + 1]
+        val = self.reg[reg]
+
+        self.reg[self.sp] -= 1
+        self.ram[self.reg[self.sp]] = val
+        self.pc += 2
+
+    def handle_pop(self):
+        reg = self.ram[self.pc + 1]
+        val = self.ram[self.reg[self.sp]]
+
+        self.reg[reg] = val
+        self.reg[self.sp] += 1
+        self.pc += 2
 
     def load(self, file_load):
         """Load a program into memory."""
