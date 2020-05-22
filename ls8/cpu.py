@@ -11,6 +11,10 @@ PUSH = 0b01000101
 POP = 0b01000110
 CALL = 0b01010000
 RET = 0b00010001
+CMP = 0b10100111
+JUMP = 0b01010100
+JEQ = 0b01010101
+JNE = 0b01010110
 
 
 class CPU:
@@ -21,17 +25,23 @@ class CPU:
         self.pc = 0
         self.ram = [0] * 255
         self.reg = [0] * 8
+        self.fl = 4
         self.sp = 7
         self.reg[self.sp] = 0xf4
-        self.branchtable = {}
-        self.branchtable[LDI] = self.handle_ldi
-        self.branchtable[PRN] = self.handle_prn
-        self.branchtable[MUL] = self.handle_mul
-        self.branchtable[PUSH] = self.handle_push
-        self.branchtable[POP] = self.handle_pop
-        self.branchtable[CALL] = self.handle_call
-        self.branchtable[RET] = self.handle_return
-        self.branchtable[ADD] = self.handle_add
+        self.branchtable = {
+            LDI: self.handle_ldi,
+            PRN: self.handle_prn,
+            MUL: self.handle_mul,
+            PUSH: self.handle_push,
+            POP: self.handle_pop,
+            CALL: self.handle_call,
+            RET: self.handle_return,
+            ADD: self.handle_add,
+            CMP: self.handle_compare,
+            JUMP: self.handle_jump,
+            JEQ: self.handle_jeq,
+            JNE: self.handle_jne
+        }
 
     def handle_ldi(self):
         reg_index = self.ram[self.pc + 1]
@@ -61,17 +71,18 @@ class CPU:
         val = self.reg[reg]
 
         self.reg[self.sp] -= 1
-        # print(self.ram[self.reg[self.sp]], self.reg[self.sp])
-        # if self.ram[self.reg[self.sp]] == 0:
-        self.ram[self.reg[self.sp]] = val
-        self.pc += 2
-        # else:
-        #     self.reg[self.sp] += 1
-        #     raise OverflowError("Stack Overflow")
+        print(self.ram[self.reg[self.sp]], self.reg[self.sp])
+        if self.ram[self.reg[self.sp]] == 0:
+            self.ram[self.reg[self.sp]] = val
+            self.pc += 2
+        else:
+            self.reg[self.sp] += 1
+            raise OverflowError("Stack Overflow")
 
     def handle_pop(self):
         reg = self.ram[self.pc + 1]
         val = self.ram[self.reg[self.sp]]
+        self.ram[self.reg[self.sp]] = 0
 
         self.reg[reg] = val
         self.reg[self.sp] += 1
@@ -88,36 +99,49 @@ class CPU:
         self.pc = self.ram[self.reg[self.sp]]
         self.reg[self.sp] += 1
 
+    def handle_compare(self):
+        num1 = self.reg[self.ram[self.pc + 1]]
+        num2 = self.reg[self.ram[self.pc + 2]]
+        if num1 == num2:
+            self.reg[self.fl] = 0b00000001
+        elif num1 > num2:
+            self.reg[self.fl] = 0b00000010
+        elif num1 < num2:
+            self.reg[self.fl] = 0b00000100
+        self.pc += 3
+
+    def handle_jump(self):
+        self.pc = self.reg[self.ram[self.pc + 1]]
+
+    def handle_jeq(self):
+        if self.reg[self.fl] == 0b00000001:
+            self.pc = self.reg[self.ram[self.pc + 1]]
+        else:
+            self.pc += 2
+
+    def handle_jne(self):
+        if self.reg[self.fl] != 0b00000001:
+            self.pc = self.reg[self.ram[self.pc + 1]]
+        else:
+            self.pc += 2
+
     def load(self, file_load):
         """Load a program into memory."""
 
         address = 0
-
-        # For now, we've just hardcoded a program:
 
         try:
             with open(f"examples/{file_load}") as f:
                 for line in f:
                     num = line.split("#")[0].replace('\n', '')
                     # print(f"run -> {int(num,2):08b}")
-                    self.ram[address] = int(num, 2)
+                    try:
+                        self.ram[address] = int(num, 2)
+                    except:
+                        continue
                     address += 1
         except FileNotFoundError:
             print("file not found")
-
-        # program = [
-        #     # From print8.ls8
-        #     0b10000010,  # LDI R0,8
-        #     0b00000000,
-        #     0b00001000,
-        #     0b01000111,  # PRN R0
-        #     0b00000000,
-        #     0b00000001,  # HLT
-        # ]
-
-        # for instruction in program:
-        #     self.ram[address] = instruction
-        #     address += 1
 
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
@@ -171,21 +195,3 @@ class CPU:
                 run = False
                 self.pc += 1
             command = self.ram[self.pc]
-
- # if command == LDI:
-            #     # load value into register
-            #     reg_index = self.ram[self.pc + 1]
-            #     num = self.ram[self.pc + 2]
-            #     self.reg[reg_index] = num
-            #     self.pc += 3
-            # elif command == MUL:
-            #     reg_index1 = self.ram[self.pc + 1]
-            #     reg_index2 = self.ram[self.pc + 2]
-            #     self.alu("MULTIPLY", reg_index1, reg_index2)
-            #     self.pc += 3
-            # elif command == PRN:
-            #     reg_index = self.ram[self.pc + 1]
-            #     print(self.reg[reg_index])
-            #     self.pc += 2
-            # elif command == HLT:
-            #     run = False
