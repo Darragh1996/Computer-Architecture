@@ -151,6 +151,14 @@ class CPU:
         # elif op == "SUB": etc
         elif op == "MULTIPLY":
             self.reg[reg_a] *= self.reg[reg_b]
+        elif op == "AND":
+            self.reg[reg_a] = self.reg[reg_a] & self.reg[reg_b]
+        elif op == "OR":
+            self.reg[reg_a] = self.reg[reg_a] | self.reg[reg_b]
+        elif op == "XOR":
+            self.reg[reg_a] = self.reg[reg_a] ^ self.reg[reg_b]
+        elif op == "NOT":
+            self.reg[reg_a] = ~(self.reg[reg_a] & self.reg[reg_b])
         else:
             raise Exception("Unsupported ALU operation")
 
